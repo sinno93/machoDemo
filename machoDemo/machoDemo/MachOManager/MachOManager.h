@@ -15,6 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 +(instancetype)shareManager;
 - (ImageItem *)imageItemAtIndex:(int)index;
 - (ImageItem *)imageAtAddress:(long long)address;
+- (ImageItem *)imageWithClass:(Class)class methodName:(NSString *)targetmethodName;
 @end
 
 

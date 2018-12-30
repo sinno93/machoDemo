@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dlfcn.h>
-
+#import <objc/runtime.h>
 @interface MachOManager ()
 @property (nonatomic, strong) NSArray *itemArray;
 @end
@@ -84,5 +84,44 @@
     imageItem.slide = _dyld_get_image_vmaddr_slide(index);
     return imageItem;
 }
+- (ImageItem *)imageWithClass:(Class)class methodName:(NSString *)targetmethodName {
+    long long address = [self addressWithClass:class methodName:targetmethodName];
+    return [self imageAtAddress:address];
+}
+- (long long)addressWithClass:(Class)class methodName:(NSString *)targetmethodName {
+    Class currentClass = class;
+    
+    if (currentClass) {
+        unsigned int methodCount;
+        Method *methodList = class_copyMethodList(currentClass, &methodCount);
+        IMP lastImp = NULL;
+        long long address = 0;
+        for (NSInteger i = 0; i < methodCount; i++) {
+            Method method = methodList[i];
+            NSString *methodName = [NSString stringWithCString:sel_getName(method_getName(method))
+                                                      encoding:NSUTF8StringEncoding];
+            if ([targetmethodName isEqualToString:methodName]) {
+                lastImp = method_getImplementation(method);
+                NSString *str = [NSString stringWithFormat:@"%p",lastImp];
+                long long  test = [self numberWithHexString:str];
+                address = test;
+                break;
+            }
+        }
+        free(methodList);
+        return address;
+    }
+    return 0;
+}
 
+- (long long)numberWithHexString:(NSString *)hexString{
+    
+    const char *hexChar = [hexString cStringUsingEncoding:NSUTF8StringEncoding];
+    
+    long long hexNumber;
+    
+    sscanf(hexChar, "%llx", &hexNumber);
+    
+    return (long long)hexNumber;
+}
 @end
