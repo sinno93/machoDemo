@@ -13,6 +13,8 @@ NS_ASSUME_NONNULL_BEGIN
 @interface MachOManager : NSObject
 // 单例
 +(instancetype)shareManager;
+- (ImageItem *)imageItemAtIndex:(int)index;
+- (ImageItem *)imageAtAddress:(long long)address;
 @end
 
 
