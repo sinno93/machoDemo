@@ -21,11 +21,12 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-    
     self.descLabel.numberOfLines = 0;
-    ImageItem *targetItem = [[MachOManager shareManager] imageWithClass:ViewController.class methodName:@"viewDidLoad"];
-    NSLog(@"%@",targetItem);
-    NSString *desc = [NSString stringWithFormat:@"%@",targetItem];
+    NSArray <ImageItem *> *images = [[MachOManager shareManager] imageWithClass:UIView.class methodName:@"addSubview:"];
+    NSString *desc = @"";
+    for (ImageItem *item in images) {
+        desc = [desc stringByAppendingString:[NSString stringWithFormat:@"%@",item]];
+    }
     self.descLabel.text = desc;
     // Do any additional setup after loading the view, typically from a nib.
 }

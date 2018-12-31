@@ -33,15 +33,19 @@
     });
     return manager;
 }
-- (ImageItem *)imageItemAtIndex:(int)index {
-    return self.itemArray[index];
+- (ImageItem *)imageItemAtIndex:(UInt64)index {
+    if (index < self.itemArray.count) {
+        return self.itemArray[index];
+    } else {
+        return nil;
+    }
 }
 
 - (ImageItem *)imageAtAddress:(long long)address {
     ImageItem *targetItem = nil;
     for (ImageItem *item in self.itemArray) {
         if (item.startAddress <= address && item.endAddress > address ) {
-            NSAssert(!targetItem, @"蝴蝶？");
+            NSAssert(!targetItem, @"这个地址在多个image中存在(实际上这是不可能的)");
             targetItem = item;
         }
     }
@@ -67,11 +71,7 @@
             const struct section_64 *sect = (void *) (sc + 1);
             for(uint32_t sect_idx = 0; sect_idx < sc->nsects; sect_idx++) {
                 if(!strcmp("__TEXT", sect->segname) && !strcmp("__text", sect->sectname)) {
-//                    uint32_t memAddr = (sc->vmaddr + _dyld_get_image_vmaddr_slide(0) + sect->offset - sc->fileoff);
                     endAddress = startAddress + sc->vmsize - 1;// 左闭右开
-                    //                    NSLog(@PRINT_STR,_dyld_get_image_name(0), sect->addr, sect->size, sect->offset, memAddr);
-                    //                    txtSegRange->start = memAddr;
-                    //                    txtSegRange->end = memAddr + sect->size;
                     break;
                 }
                 sect++;
@@ -84,18 +84,25 @@
     imageItem.slide = _dyld_get_image_vmaddr_slide(index);
     return imageItem;
 }
-- (ImageItem *)imageWithClass:(Class)class methodName:(NSString *)targetmethodName {
-    long long address = [self addressWithClass:class methodName:targetmethodName];
-    return [self imageAtAddress:address];
+- (NSArray <ImageItem *> *)imageWithClass:(Class)class methodName:(NSString *)targetmethodName {
+    NSArray <NSNumber *> *addressArray = [self addressWithClass:class methodName:targetmethodName];
+    NSMutableArray *itemArrayM = [NSMutableArray array];
+    for (NSNumber *addressObj in addressArray) {
+        long long address = [addressObj longLongValue];
+        ImageItem *item = [self imageAtAddress:address];
+        if (item) {
+            [itemArrayM addObject:item];
+        }
+    }
+    return itemArrayM;
 }
-- (long long)addressWithClass:(Class)class methodName:(NSString *)targetmethodName {
+- (NSArray<NSNumber *>*)addressWithClass:(Class)class methodName:(NSString *)targetmethodName {
     Class currentClass = class;
-    
+    NSMutableArray <NSNumber *> *addressArrayM = [NSMutableArray array];
     if (currentClass) {
         unsigned int methodCount;
         Method *methodList = class_copyMethodList(currentClass, &methodCount);
         IMP lastImp = NULL;
-        long long address = 0;
         for (NSInteger i = 0; i < methodCount; i++) {
             Method method = methodList[i];
             NSString *methodName = [NSString stringWithCString:sel_getName(method_getName(method))
@@ -103,15 +110,16 @@
             if ([targetmethodName isEqualToString:methodName]) {
                 lastImp = method_getImplementation(method);
                 NSString *str = [NSString stringWithFormat:@"%p",lastImp];
-                long long  test = [self numberWithHexString:str];
-                address = test;
-                break;
+                long long  address = [self numberWithHexString:str];
+                [addressArrayM addObject:[NSNumber numberWithLongLong:address]];
             }
         }
         free(methodList);
-        return address;
+        return addressArrayM.copy;
+    } else {
+        return addressArrayM.copy;
     }
-    return 0;
+    
 }
 
 - (long long)numberWithHexString:(NSString *)hexString{
